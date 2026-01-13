@@ -22,7 +22,10 @@ var app = builder.Build();
 var config = app.Services.GetRequiredService<BackendConfig>();
 var programLogger = app.Services.GetRequiredService<ILogger<Program>>();
 
-app.UseWebSockets();
+app.UseWebSockets(new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(30)
+});
 
 app.Map("/ws", (HttpContext context, WebSocketProxy proxy) => proxy.HandleAsync(context));
 
@@ -40,6 +43,8 @@ app.MapGet("/reload", (BackendConfig cfg, ILogger<Program> logger) =>
 
 // Status endpoint for debugging active connections
 app.MapGet("/status", (ConnectionRegistry registry) => Results.Json(registry.GetSnapshot()));
+// Simple health endpoint
+app.MapGet("/healthz", (ConnectionRegistry registry) => Results.Ok(new { status = "ok", active = ((dynamic)registry.GetSnapshot()).total }));
 
 programLogger.LogInformation("Starting WebSocket proxy. Listening on {Urls}. Config file: {ConfigPath}", string.Join(", ", app.Urls), config.FilePath);
 programLogger.LogInformation("Idle timeout set to {Seconds} seconds", idleTimeout.TotalSeconds);

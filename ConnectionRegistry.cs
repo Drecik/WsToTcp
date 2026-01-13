@@ -23,6 +23,10 @@ internal sealed class ConnectionRegistry
             CreatedAt = now,
             LastActivityAt = now,
             IdleTimeoutSeconds = (int)idleTimeout.TotalSeconds,
+            ClientMessages = 0,
+            BackendMessages = 0,
+            ClientBytes = 0,
+            BackendBytes = 0,
         };
         _connections[id] = conn;
         return id;
@@ -41,6 +45,24 @@ internal sealed class ConnectionRegistry
         if (_connections.TryGetValue(id, out var conn))
         {
             conn.WebSocketState = state.ToString();
+        }
+    }
+
+    public void AddClientData(string id, int bytes)
+    {
+        if (_connections.TryGetValue(id, out var conn))
+        {
+            conn.ClientMessages++;
+            conn.ClientBytes += Math.Max(0, bytes);
+        }
+    }
+
+    public void AddBackendData(string id, int bytes)
+    {
+        if (_connections.TryGetValue(id, out var conn))
+        {
+            conn.BackendMessages++;
+            conn.BackendBytes += Math.Max(0, bytes);
         }
     }
 
@@ -64,7 +86,11 @@ internal sealed class ConnectionRegistry
                 lastActivityAt = c.LastActivityAt,
                 idleTimeoutSeconds = c.IdleTimeoutSeconds,
                 webSocketState = c.WebSocketState,
-                secondsSinceLastActivity = (DateTimeOffset.UtcNow - c.LastActivityAt).TotalSeconds
+                secondsSinceLastActivity = (DateTimeOffset.UtcNow - c.LastActivityAt).TotalSeconds,
+                clientMessages = c.ClientMessages,
+                clientBytes = c.ClientBytes,
+                backendMessages = c.BackendMessages,
+                backendBytes = c.BackendBytes
             })
             .ToList();
 
@@ -86,5 +112,9 @@ internal sealed class ConnectionRegistry
         public DateTimeOffset LastActivityAt { get; set; }
         public int IdleTimeoutSeconds { get; set; }
         public string? WebSocketState { get; set; }
+        public long ClientBytes { get; set; }
+        public long BackendBytes { get; set; }
+        public long ClientMessages { get; set; }
+        public long BackendMessages { get; set; }
     }
 }

@@ -70,8 +70,8 @@ internal sealed class WebSocketProxy
             _registry.NoteWebSocketState(connId, webSocket.State);
         }
 
-        var wsToTcp = RelayWebSocketToTcpAsync(webSocket, stream, linkedCts.Token, Activity);
-        var tcpToWs = RelayTcpToWebSocketAsync(webSocket, stream, linkedCts.Token, Activity);
+        var wsToTcp = RelayWebSocketToTcpAsync(webSocket, stream, linkedCts.Token, Activity, bytes => _registry.AddClientData(connId, bytes));
+        var tcpToWs = RelayTcpToWebSocketAsync(webSocket, stream, linkedCts.Token, Activity, bytes => _registry.AddBackendData(connId, bytes));
 
         var completed = await Task.WhenAny(wsToTcp, tcpToWs);
         linkedCts.Cancel();
@@ -83,7 +83,7 @@ internal sealed class WebSocketProxy
         _registry.Remove(connId);
     }
 
-    private static async Task RelayWebSocketToTcpAsync(WebSocket socket, NetworkStream stream, CancellationToken token, Action onActivity)
+    private static async Task RelayWebSocketToTcpAsync(WebSocket socket, NetworkStream stream, CancellationToken token, Action onActivity, Action<int> onClientBytes)
     {
         var buffer = new byte[8192];
         while (!token.IsCancellationRequested)
@@ -106,6 +106,7 @@ internal sealed class WebSocketProxy
             if (result.MessageType == WebSocketMessageType.Text || result.MessageType == WebSocketMessageType.Binary)
             {
                 onActivity();
+                onClientBytes(result.Count);
                 await stream.WriteAsync(buffer.AsMemory(0, result.Count), token);
             }
         }
@@ -120,7 +121,7 @@ internal sealed class WebSocketProxy
         }
     }
 
-    private static async Task RelayTcpToWebSocketAsync(WebSocket socket, NetworkStream stream, CancellationToken token, Action onActivity)
+    private static async Task RelayTcpToWebSocketAsync(WebSocket socket, NetworkStream stream, CancellationToken token, Action onActivity, Action<int> onBackendBytes)
     {
         var buffer = new byte[8192];
         while (!token.IsCancellationRequested)
@@ -143,6 +144,7 @@ internal sealed class WebSocketProxy
             if (socket.State == WebSocketState.Open)
             {
                 onActivity();
+                onBackendBytes(read);
                 await socket.SendAsync(buffer.AsMemory(0, read), WebSocketMessageType.Binary, endOfMessage: true, cancellationToken: token);
             }
             else
