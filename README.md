@@ -32,7 +32,7 @@ WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
 - 空闲保护：在配置的空闲时间窗口内（默认 5 分钟）无双向流量，代理会主动关闭 WebSocket 与 TCP，避免句柄耗尽。
  - 状态接口：`GET /status` 返回当前连接快照（总连接数、每个连接的创建时间、最后活动时间、WebSocket 状态、客户端/后端消息与字节计数等）。
  - 健康接口：`GET /healthz` 返回服务状态与当前活动连接数。
- - 保活：服务端对 WebSocket 发送 ping（`KeepAliveInterval=30s`），帮助检测中断。
+ 
 
 ## 注意事项
 - 不提供 TLS 或认证能力。
