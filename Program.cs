@@ -24,10 +24,7 @@ var app = builder.Build();
 var config = app.Services.GetRequiredService<BackendConfig>();
 var programLogger = app.Services.GetRequiredService<ILogger<Program>>();
 
-app.UseWebSockets(new WebSocketOptions
-{
-    KeepAliveInterval = TimeSpan.FromSeconds(30)
-});
+app.UseWebSockets();
 
 app.Map("/ws", (HttpContext context, WebSocketProxy proxy) => proxy.HandleAsync(context));
 
@@ -100,14 +97,8 @@ TimeSpan ResolveIdleTimeout(string[] appArgs)
 string? ResolveReloadKey(string[] appArgs)
 {
     const string primaryArg = "--reload-secret-key";
-    const string legacyArg = "--reload-screate-key"; // legacy misspelling, still accepted
 
     int index = Array.FindIndex(appArgs, s => string.Equals(s, primaryArg, StringComparison.OrdinalIgnoreCase));
-    if (index < 0)
-    {
-        index = Array.FindIndex(appArgs, s => string.Equals(s, legacyArg, StringComparison.OrdinalIgnoreCase));
-    }
-
     if (index >= 0 && index + 1 < appArgs.Length)
     {
         var value = appArgs[index + 1];
