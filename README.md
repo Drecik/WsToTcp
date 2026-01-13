@@ -21,6 +21,7 @@ foo=192.168.1.10:7000
 3. Customize listen urls: `dotnet run --urls http://0.0.0.0:5000`
 4. Point to a custom config file: `dotnet run -- --config path/to/backend.config`
    - Alternatively set environment variable `CONFIG_PATH`.
+5. Customize idle timeout (seconds): set env `IDLE_TIMEOUT_SECONDS` (default 300 seconds).
 
 WebSocket clients connect to `ws://<host>:<port>/ws?a=<key>`.
 
@@ -28,7 +29,7 @@ WebSocket clients connect to `ws://<host>:<port>/ws?a=<key>`.
 - Accepts WebSocket requests only; HTTP requests to `/ws` get `400`.
 - Forwards WebSocket text/binary frames as raw bytes to TCP; backend bytes are sent as binary WebSocket messages.
 - When the TCP backend closes, the proxy initiates a WebSocket close handshake to the client.
-- Idle protection: if no traffic in either direction for 5 minutes, the proxy closes the WebSocket and TCP to prevent descriptor leaks.
+- Idle protection: if no traffic in either direction for the configured idle window (default 5 minutes), the proxy closes the WebSocket and TCP to prevent descriptor leaks. Override via env `IDLE_TIMEOUT_SECONDS`.
 
 ## Notes
 - No TLS or authentication is provided.

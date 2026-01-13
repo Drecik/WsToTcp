@@ -1,6 +1,7 @@
 using WsToTcp;
 
 var configPath = ResolveConfigPath(args);
+var idleTimeout = ResolveIdleTimeout();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,7 @@ builder.Services.AddSingleton(sp =>
 });
 
 builder.Services.AddSingleton<WebSocketProxy>();
+builder.Services.AddSingleton(new ProxyOptions(idleTimeout));
 
 var app = builder.Build();
 
@@ -36,6 +38,7 @@ app.MapGet("/reload", (BackendConfig cfg, ILogger<Program> logger) =>
 });
 
 programLogger.LogInformation("Starting WebSocket proxy. Listening on {Urls}. Config file: {ConfigPath}", string.Join(", ", app.Urls), config.FilePath);
+programLogger.LogInformation("Idle timeout set to {Seconds} seconds", idleTimeout.TotalSeconds);
 
 app.Run();
 
@@ -55,5 +58,16 @@ string ResolveConfigPath(string[] appArgs)
     }
 
     return Path.GetFullPath("backend.config");
+}
+
+TimeSpan ResolveIdleTimeout()
+{
+    var env = Environment.GetEnvironmentVariable("IDLE_TIMEOUT_SECONDS");
+    if (!string.IsNullOrWhiteSpace(env) && double.TryParse(env, out var seconds) && seconds > 0)
+    {
+        return TimeSpan.FromSeconds(seconds);
+    }
+
+    return TimeSpan.FromMinutes(5);
 }
 

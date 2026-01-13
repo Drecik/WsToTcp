@@ -7,11 +7,12 @@ internal sealed class WebSocketProxy
 {
     private readonly BackendConfig _config;
     private readonly ILogger<WebSocketProxy> _logger;
-    private static readonly TimeSpan IdleWindow = TimeSpan.FromMinutes(5);
+    private readonly ProxyOptions _options;
 
-    public WebSocketProxy(BackendConfig config, ILogger<WebSocketProxy> logger)
+    public WebSocketProxy(BackendConfig config, ProxyOptions options, ILogger<WebSocketProxy> logger)
     {
         _config = config;
+        _options = options;
         _logger = logger;
     }
 
@@ -56,7 +57,7 @@ internal sealed class WebSocketProxy
         _logger.LogInformation("Session started for key {Key} -> {Host}:{Port}", routeKey, endPoint.Host, endPoint.Port);
 
         using var stream = tcpClient.GetStream();
-        using var idle = new IdleTimeout(IdleWindow);
+        using var idle = new IdleTimeout(_options.IdleTimeout);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, idle.Token);
 
         var wsToTcp = RelayWebSocketToTcpAsync(webSocket, stream, linkedCts.Token, idle.Touch);
