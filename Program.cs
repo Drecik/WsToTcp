@@ -1,7 +1,7 @@
 using WsToTcp;
 
 var configPath = ResolveConfigPath(args);
-var idleTimeout = ResolveIdleTimeout();
+var idleTimeout = ResolveIdleTimeout(args);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,12 +60,17 @@ string ResolveConfigPath(string[] appArgs)
     return Path.GetFullPath("backend.config");
 }
 
-TimeSpan ResolveIdleTimeout()
+TimeSpan ResolveIdleTimeout(string[] appArgs)
 {
-    var env = Environment.GetEnvironmentVariable("IDLE_TIMEOUT_SECONDS");
-    if (!string.IsNullOrWhiteSpace(env) && double.TryParse(env, out var seconds) && seconds > 0)
+    const string argKey = "--idle-timeout"; // seconds
+    var index = Array.FindIndex(appArgs, s => string.Equals(s, argKey, StringComparison.OrdinalIgnoreCase));
+    if (index >= 0 && index + 1 < appArgs.Length)
     {
-        return TimeSpan.FromSeconds(seconds);
+        var value = appArgs[index + 1];
+        if (double.TryParse(value, out var seconds) && seconds > 0)
+        {
+            return TimeSpan.FromSeconds(seconds);
+        }
     }
 
     return TimeSpan.FromMinutes(5);
