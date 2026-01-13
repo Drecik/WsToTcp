@@ -2,6 +2,7 @@ using WsToTcp;
 
 var configPath = ResolveConfigPath(args);
 var idleTimeout = ResolveIdleTimeout(args);
+var reloadKey = ResolveReloadKey(args);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddSingleton(sp =>
 builder.Services.AddSingleton<WebSocketProxy>();
 builder.Services.AddSingleton(new ProxyOptions(idleTimeout));
 builder.Services.AddSingleton<ConnectionRegistry>();
+builder.Services.AddSingleton(new ReloadOptions(reloadKey));
 
 var app = builder.Build();
 
@@ -30,8 +32,17 @@ app.UseWebSockets(new WebSocketOptions
 app.Map("/ws", (HttpContext context, WebSocketProxy proxy) => proxy.HandleAsync(context));
 
 // HTTP-triggered config reload endpoint (no auth; add as needed)
-app.MapGet("/reload", (BackendConfig cfg, ILogger<Program> logger) =>
+app.MapGet("/reload", (BackendConfig cfg, ReloadOptions opt, ILogger<Program> logger, HttpRequest req) =>
 {
+    if (!string.IsNullOrEmpty(opt.Key))
+    {
+        var provided = req.Query["key"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(provided) || !string.Equals(provided, opt.Key, StringComparison.Ordinal))
+        {
+            return Results.Unauthorized();
+        }
+    }
+
     var ok = cfg.TryReload();
     if (ok)
     {
@@ -48,6 +59,7 @@ app.MapGet("/healthz", (ConnectionRegistry registry) => Results.Ok(new { status 
 
 programLogger.LogInformation("Starting WebSocket proxy. Listening on {Urls}. Config file: {ConfigPath}", string.Join(", ", app.Urls), config.FilePath);
 programLogger.LogInformation("Idle timeout set to {Seconds} seconds", idleTimeout.TotalSeconds);
+programLogger.LogInformation("Reload key {State}", string.IsNullOrEmpty(reloadKey) ? "disabled" : "enabled");
 
 app.Run();
 
@@ -83,5 +95,20 @@ TimeSpan ResolveIdleTimeout(string[] appArgs)
     }
 
     return TimeSpan.FromMinutes(5);
+}
+
+string? ResolveReloadKey(string[] appArgs)
+{
+    const string argKey = "--reload-screate-key";
+    var index = Array.FindIndex(appArgs, s => string.Equals(s, argKey, StringComparison.OrdinalIgnoreCase));
+    if (index >= 0 && index + 1 < appArgs.Length)
+    {
+        var value = appArgs[index + 1];
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+    }
+    return null;
 }
 

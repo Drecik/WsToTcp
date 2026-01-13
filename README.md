@@ -21,6 +21,7 @@ foo=192.168.1.10:7000
 3. 指定监听地址：`dotnet run --urls http://0.0.0.0:5000`
 4. 指定配置文件路径：`dotnet run -- --config path/to/backend.config`
 5. 指定空闲超时（秒）：`dotnet run -- --idle-timeout 300`（默认 300 秒，约 5 分钟）
+6. 保护刷新接口：`dotnet run -- --reload-screate-key <key>`，之后刷新需带 `GET /reload?key=<key>` 才生效。
 
 WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
 
@@ -29,6 +30,9 @@ WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
 - 将 WebSocket 文本/二进制消息直接转发为原始字节到 TCP；后端 TCP 字节以二进制 WebSocket 消息返回给客户端。
 - 当后端 TCP 关闭时，代理向客户端发起 WebSocket 关闭握手。
 - 空闲保护：在配置的空闲时间窗口内（默认 5 分钟）无双向流量，代理会主动关闭 WebSocket 与 TCP，避免句柄耗尽。
+ - 状态接口：`GET /status` 返回当前连接快照（总连接数、每个连接的创建时间、最后活动时间、WebSocket 状态、客户端/后端消息与字节计数等）。
+ - 健康接口：`GET /healthz` 返回服务状态与当前活动连接数。
+ - 保活：服务端对 WebSocket 发送 ping（`KeepAliveInterval=30s`），帮助检测中断。
 
 ## 注意事项
 - 不提供 TLS 或认证能力。
