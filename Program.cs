@@ -99,8 +99,15 @@ TimeSpan ResolveIdleTimeout(string[] appArgs)
 
 string? ResolveReloadKey(string[] appArgs)
 {
-    const string argKey = "--reload-screate-key";
-    var index = Array.FindIndex(appArgs, s => string.Equals(s, argKey, StringComparison.OrdinalIgnoreCase));
+    const string primaryArg = "--reload-secret-key";
+    const string legacyArg = "--reload-screate-key"; // legacy misspelling, still accepted
+
+    int index = Array.FindIndex(appArgs, s => string.Equals(s, primaryArg, StringComparison.OrdinalIgnoreCase));
+    if (index < 0)
+    {
+        index = Array.FindIndex(appArgs, s => string.Equals(s, legacyArg, StringComparison.OrdinalIgnoreCase));
+    }
+
     if (index >= 0 && index + 1 < appArgs.Length)
     {
         var value = appArgs[index + 1];

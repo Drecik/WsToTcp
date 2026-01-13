@@ -21,7 +21,7 @@ foo=192.168.1.10:7000
 3. 指定监听地址：`dotnet run --urls http://0.0.0.0:5000`
 4. 指定配置文件路径：`dotnet run -- --config path/to/backend.config`
 5. 指定空闲超时（秒）：`dotnet run -- --idle-timeout 300`（默认 300 秒，约 5 分钟）
-6. 保护刷新接口：`dotnet run -- --reload-screate-key <key>`，之后刷新需带 `GET /reload?key=<key>` 才生效。
+6. 保护刷新接口：`dotnet run -- --reload-secret-key <key>`，之后刷新需带 `GET /reload?key=<key>` 才生效。
 
 WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
 
