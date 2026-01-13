@@ -8,11 +8,13 @@ internal sealed class WebSocketProxy
     private readonly BackendConfig _config;
     private readonly ILogger<WebSocketProxy> _logger;
     private readonly ProxyOptions _options;
+    private readonly ConnectionRegistry _registry;
 
-    public WebSocketProxy(BackendConfig config, ProxyOptions options, ILogger<WebSocketProxy> logger)
+    public WebSocketProxy(BackendConfig config, ProxyOptions options, ConnectionRegistry registry, ILogger<WebSocketProxy> logger)
     {
         _config = config;
         _options = options;
+        _registry = registry;
         _logger = logger;
     }
 
@@ -54,14 +56,22 @@ internal sealed class WebSocketProxy
             return;
         }
 
-        _logger.LogInformation("Session started for key {Key} -> {Host}:{Port}", routeKey, endPoint.Host, endPoint.Port);
+        var connId = _registry.Register(routeKey, endPoint, context, _options.IdleTimeout);
+        _logger.LogInformation("Session started [{Id}] for key {Key} -> {Host}:{Port}", connId, routeKey, endPoint.Host, endPoint.Port);
 
         using var stream = tcpClient.GetStream();
         using var idle = new IdleTimeout(_options.IdleTimeout);
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, idle.Token);
 
-        var wsToTcp = RelayWebSocketToTcpAsync(webSocket, stream, linkedCts.Token, idle.Touch);
-        var tcpToWs = RelayTcpToWebSocketAsync(webSocket, stream, linkedCts.Token, idle.Touch);
+        void Activity()
+        {
+            idle.Touch();
+            _registry.Touch(connId);
+            _registry.NoteWebSocketState(connId, webSocket.State);
+        }
+
+        var wsToTcp = RelayWebSocketToTcpAsync(webSocket, stream, linkedCts.Token, Activity);
+        var tcpToWs = RelayTcpToWebSocketAsync(webSocket, stream, linkedCts.Token, Activity);
 
         var completed = await Task.WhenAny(wsToTcp, tcpToWs);
         linkedCts.Cancel();
@@ -69,7 +79,8 @@ internal sealed class WebSocketProxy
         await Task.WhenAll(wsToTcp, tcpToWs).ContinueWith(_ => { }, TaskScheduler.Default);
 
         var reason = idle.IsExpired ? "idle timeout" : (completed == wsToTcp ? "client closed" : "backend closed");
-        _logger.LogInformation("Session ended for key {Key} -> {Host}:{Port} ({Reason})", routeKey, endPoint.Host, endPoint.Port, reason);
+        _logger.LogInformation("Session ended [{Id}] for key {Key} -> {Host}:{Port} ({Reason})", connId, routeKey, endPoint.Host, endPoint.Port, reason);
+        _registry.Remove(connId);
     }
 
     private static async Task RelayWebSocketToTcpAsync(WebSocket socket, NetworkStream stream, CancellationToken token, Action onActivity)

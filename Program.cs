@@ -15,6 +15,7 @@ builder.Services.AddSingleton(sp =>
 
 builder.Services.AddSingleton<WebSocketProxy>();
 builder.Services.AddSingleton(new ProxyOptions(idleTimeout));
+builder.Services.AddSingleton<ConnectionRegistry>();
 
 var app = builder.Build();
 
@@ -36,6 +37,9 @@ app.MapGet("/reload", (BackendConfig cfg, ILogger<Program> logger) =>
     }
     return Results.Problem(title: "reload failed", statusCode: 500);
 });
+
+// Status endpoint for debugging active connections
+app.MapGet("/status", (ConnectionRegistry registry) => Results.Json(registry.GetSnapshot()));
 
 programLogger.LogInformation("Starting WebSocket proxy. Listening on {Urls}. Config file: {ConfigPath}", string.Join(", ", app.Urls), config.FilePath);
 programLogger.LogInformation("Idle timeout set to {Seconds} seconds", idleTimeout.TotalSeconds);
