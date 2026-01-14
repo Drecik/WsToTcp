@@ -1,6 +1,6 @@
 # WsToTcp
 
-一个使用 C# (.NET 8) 编写的 WebSocket→TCP 代理。它在 `/ws` 接受 `ws://` 连接，根据 URL 的 `Token` 参数在配置文件中查找对应后端 TCP 地址，进行双向转发。仅支持明文 `ws`，不支持 `wss`。
+一个使用 C# (.NET 8) 编写的 WebSocket→TCP 代理。默认在 `/ws` 接受 `ws://` 连接（可通过参数自定义），根据 URL 的 `Token` 参数在配置文件中查找对应后端 TCP 地址，进行双向转发。仅支持明文 `ws`，不支持 `wss`。
 
 ## 配置文件
 使用键值对映射（默认文件名：`backend.config`），每行格式为 `key=host:port`，空行或以 `#` 开头的注释行会被忽略。
@@ -22,6 +22,7 @@ foo=192.168.1.10:7000
 4. 指定配置文件路径：`dotnet run -- --config path/to/backend.config`
 5. 指定空闲超时（秒）：`dotnet run -- --idle-timeout 300`（默认 300 秒，约 5 分钟）
 6. 保护刷新接口：`dotnet run -- --reload-secret-key <key>`，之后刷新需带 `GET /reload?key=<key>` 才生效。
+7. 自定义 WebSocket 路径：`dotnet run -- --ws-path /custom`（默认 `/ws`；会自动补全前导 `/`）。
 
 WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
 

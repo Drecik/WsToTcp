@@ -3,6 +3,7 @@ using WsToTcp;
 var configPath = ResolveConfigPath(args);
 var idleTimeout = ResolveIdleTimeout(args);
 var reloadKey = ResolveReloadKey(args);
+var wsPath = ResolveWebSocketPath(args);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,7 @@ var programLogger = app.Services.GetRequiredService<ILogger<Program>>();
 
 app.UseWebSockets();
 
-app.Map("/ws", (HttpContext context, WebSocketProxy proxy) => proxy.HandleAsync(context));
+app.Map(wsPath, (HttpContext context, WebSocketProxy proxy) => proxy.HandleAsync(context));
 
 // HTTP-triggered config reload endpoint (no auth; add as needed)
 app.MapGet("/reload", (BackendConfig cfg, ReloadOptions opt, ILogger<Program> logger, HttpRequest req) =>
@@ -65,6 +66,7 @@ app.MapGet("/healthz", (ConnectionRegistry registry) => Results.Ok(new { status 
 programLogger.LogInformation("Starting WebSocket proxy. Listening on {Urls}. Config file: {ConfigPath}", string.Join(", ", app.Urls), config.FilePath);
 programLogger.LogInformation("Idle timeout set to {Seconds} seconds", idleTimeout.TotalSeconds);
 programLogger.LogInformation("Reload key {State}", string.IsNullOrEmpty(reloadKey) ? "disabled" : "enabled");
+programLogger.LogInformation("WebSocket route path: {Path}", wsPath);
 
 app.Run();
 
@@ -116,5 +118,22 @@ string? ResolveReloadKey(string[] appArgs)
         }
     }
     return null;
+}
+
+string ResolveWebSocketPath(string[] appArgs)
+{
+    const string argKey = "--ws-path";
+    var index = Array.FindIndex(appArgs, s => string.Equals(s, argKey, StringComparison.OrdinalIgnoreCase));
+    if (index >= 0 && index + 1 < appArgs.Length && !string.IsNullOrWhiteSpace(appArgs[index + 1]))
+    {
+        var value = appArgs[index + 1].Trim();
+        if (!value.StartsWith("/"))
+        {
+            value = "/" + value;
+        }
+        return value;
+    }
+
+    return "/ws";
 }
 
