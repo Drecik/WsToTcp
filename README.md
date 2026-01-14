@@ -1,9 +1,11 @@
 # WsToTcp
 
-一个使用 C# (.NET 8) 编写的 WebSocket→TCP 代理。默认在 `/ws` 接受 `ws://` 连接（可通过参数自定义），根据 URL 的 `Token` 参数在配置文件中查找对应后端 TCP 地址，进行双向转发。仅支持明文 `ws`，不支持 `wss`。
+A WebSocket-to-TCP proxy written in C# (.NET 8). By default it listens on `/ws` (configurable via `--ws-path`), accepts `ws://` connections, looks up backend TCP endpoints using the `Token` query parameter from a config file, and forwards traffic both ways. Supports plaintext `ws` only (no `wss`).
 
-## 配置文件
-使用键值对映射（默认文件名：`backend.config`），每行格式为 `key=host:port`，空行或以 `#` 开头的注释行会被忽略。
+Chinese version: [README.cn.md](README.cn.md)
+
+## Config file
+Uses key/value mapping (default file name: `backend.config`), each line formatted as `key=host:port`. Blank lines or lines starting with `#` are ignored.
 
 ```text
 # backend.config
@@ -11,30 +13,29 @@ example=127.0.0.1:9000
 foo=192.168.1.10:7000
 ```
 
-- 客户端连接时，代理从 `Token` 查询参数读取路由键（例如：`/ws?Token=example`），并在配置中查找对应后端。
-- 若缺少 `Token` 或找不到对应键，返回 `400/404`。
-- 通过 HTTP 刷新配置：`GET /reload` 成功返回 `200`，失败返回 `500`。
+- On client connect, the proxy reads the route key from the `Token` query parameter (for example: `/ws?Token=example`) and looks up the backend.
+- If `Token` is missing or not found, it responds with `400/404`.
+- Reload config via HTTP: `GET /reload` returns `200` on success, `500` on failure.
 
-## 运行
-1. 构建：`dotnet build`
-2. 启动（默认地址）：`dotnet run`
-3. 指定监听地址：`dotnet run --urls http://0.0.0.0:5000`
-4. 指定配置文件路径：`dotnet run -- --config path/to/backend.config`
-5. 指定空闲超时（秒）：`dotnet run -- --idle-timeout 300`（默认 300 秒，约 5 分钟）
-6. 保护刷新接口：`dotnet run -- --reload-secret-key <key>`，之后刷新需带 `GET /reload?key=<key>` 才生效。
-7. 自定义 WebSocket 路径：`dotnet run -- --ws-path /custom`（默认 `/ws`；会自动补全前导 `/`）。
+## Run
+1. Build: `dotnet build`
+2. Start (default address): `dotnet run`
+3. Set listen addresses: `dotnet run --urls http://0.0.0.0:5000`
+4. Set config file path: `dotnet run -- --config path/to/backend.config`
+5. Set idle timeout (seconds): `dotnet run -- --idle-timeout 300` (default 300 seconds, about 5 minutes)
+6. Protect the reload endpoint: `dotnet run -- --reload-secret-key <key>`; subsequent reloads require `GET /reload?key=<key>`.
+7. Custom WebSocket path: `dotnet run -- --ws-path /custom` (default `/ws`; a leading `/` is added automatically).
 
-WebSocket 客户端示例：`ws://<host>:<port>/ws?Token=<key>`。
+WebSocket client example: `ws://<host>:<port>/ws?Token=<key>`.
 
-## 行为
-- 仅接受 WebSocket 请求，HTTP 请求到 `/ws` 会返回 `400`。
-- 将 WebSocket 文本/二进制消息直接转发为原始字节到 TCP；后端 TCP 字节以二进制 WebSocket 消息返回给客户端。
-- 当后端 TCP 关闭时，代理向客户端发起 WebSocket 关闭握手。
-- 空闲保护：在配置的空闲时间窗口内（默认 5 分钟）无双向流量，代理会主动关闭 WebSocket 与 TCP，避免句柄耗尽。
- - 状态接口：`GET /status` 返回当前连接快照（总连接数、每个连接的创建时间、最后活动时间、WebSocket 状态、客户端/后端消息与字节计数等）。
- - 健康接口：`GET /healthz` 返回服务状态与当前活动连接数。
- 
+## Behavior
+- Accepts only WebSocket requests; HTTP requests to the WebSocket path return `400`.
+- Forwards WebSocket text/binary frames as raw bytes to TCP; backend TCP bytes are returned as binary WebSocket messages.
+- When the backend TCP closes, the proxy initiates a WebSocket close handshake to the client.
+- Idle protection: if there is no bidirectional traffic within the configured window (default 5 minutes), the proxy closes both WebSocket and TCP to avoid handle exhaustion.
+- Status endpoint: `GET /status` returns a connection snapshot (total connections, per-connection creation time, last activity, WebSocket state, client/backend message and byte counts, etc.).
+- Health endpoint: `GET /healthz` returns service status and current active connection count.
 
-## 注意事项
-- 不提供 TLS 或认证能力。
-- 请确保配置行格式正确；若配置存在错误，刷新将失败并保留旧映射。
+## Notes
+- TLS and authentication are not provided.
+- Ensure config lines are valid; if reload fails due to errors, the previous mapping remains in effect.
