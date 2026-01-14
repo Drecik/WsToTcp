@@ -7,6 +7,11 @@ obj/
 *.user
 *.suo
 
+# Tooling and config
+.github/
+.vscode/
+Properties/
+
 # Logs
 *.log
 

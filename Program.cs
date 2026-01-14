@@ -6,6 +6,14 @@ var reloadKey = ResolveReloadKey(args);
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure console logging to include timestamps for easier tracing
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
+    options.SingleLine = true;
+});
+
 builder.Services.AddSingleton(sp =>
 {
     var logger = sp.GetRequiredService<ILogger<BackendConfig>>();
